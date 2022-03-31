@@ -1,0 +1,303 @@
+#include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
+using namespace sf;
+//Это параметры лабиринта?
+const int H = 21;
+const int W = 21;
+// РАЗМЕР ПЛИТОК
+const int ts = 50;
+Обычный лабиринт,создаем двухмерный массив для нашего лабиринта, то есть мы ставим буквы где будет наша стена и с помощью двухмерного массива мы создаем наш лабиринт.
+String TileMap[H] = {
+"AAAAAAAAAAAAAAAAAAAAA",
+"A   A       A     A A",
+"A A AAA AAA AAA A A A",
+"A A     A     A A A C",
+"A AAA AAA A A A AAA A",
+"A   A   A A A   A   A",
+"AAA AAAAA A AAAAA A A",
+"A   A     A     A A A",
+"A AAA A AAAAAAA A AAA",
+"A A A A   A   A     A",
+"AAA A AAA AAA AAAAA A",
+"A   A   A   A   A   A",
+"AAA AAA AAA AAA A AAA",
+"A     A   A   A A A A",
+"A AAAAA A AAAAA AAA A",
+"A A     A A     A   A",
+"A A A AAAAA AAAAA AAA",
+"A   A   A A   A   A A",
+"AAA AAA A AAA A A A A",
+"A   A           A   A",
+"AAAAAAAAAAAAAAAAAAAAA",
+};
+// РАБОТА С КАМЕРОЙ,КОЭФФИЦИЕНТ ЧТОБЫ МЫ МОГЛИ ВИДЕТЬ НАШЕГО ИГРОКА
+float OffsetX = 0;
+float OffsetY = ts * 14;
+// ЧТОБЫ САМ ЛАБИРИНТ ЗАКАНЧИВАЛСЯ МЫ СОЗДАДИМ ЛОГИЧЕСКИЙ КОЭФФИЦИЕНТ ПОБ - ФОЛС, ПОКА МЫ ИГРАЕМ - ДВИГАЕМСЯ, А ВО ВРЕМЯ ВЫИГРЫША НЕ СМОЖЕМ ДВИГАТЬСЯ 
+bool pob = false;
+//СОЗДАЕМ КОЭФФИЦИЕНТ ДЛЯ СЕКУНДОМЕРА,НЕ ЛОГИЧЕСКИЙ Т.Е 1,2 ИГРА ИДЕТ = 1, ИГРА СТОП = 2
+int pe = 2;
+// звуки лабиринта при различных выполненных действий
+class setSound {
+public:
+	SoundBuffer s1, s2, s3;
+	Sound time, error, win;
+	setSound() {
+		s1.loadFromFile("C:/Users/zaboe/Desktop/Game/Sound/time.ogg");
+		s2.loadFromFile("C:/Users/zaboe/Desktop/Game/Sound/error.ogg");
+		s3.loadFromFile("C:/Users/zaboe/Desktop/Game/Sound/win.ogg");
+//!
+		time.setBuffer(s1);
+		error.setBuffer(s2);
+		win.setBuffer(s3);
+// это хз когда тру 
+// это хз когда тру // цикличность включают, чтобы звук когда закончился начинался заново как я понимаю
+		time.setLoop(true);
+	}
+};
+setSound sound;
+class Stopwatch {
+public:
+	Sprite min[2], sec[2], toc;
+	int m[2], s[2], ms;
+	Stopwatch(Texture& image) {
+		for (int i = 0; i < 2; i++) {
+			min[i].setTexture(image);
+			sec[i].setTexture(image);
+
+			min[i].setPosition(25 * i, 5);
+			sec[i].setPosition(75 + 25 * i, 5);
+// это хз положение часов?
+// это хз положение часов? // похоже на то, есть какое-то начальное положение
+			min[i].setTextureRect(IntRect(0, 0, 25, 36));
+			sec[i].setTextureRect(IntRect(0, 0, 25, 36));
+// это хз что за параметры
+// это хз что за параметры  // 
+			m[i] = 0;
+			s[i] = 0;
+		}
+// это хз положение чего?
+// это хз положение чего? 
+		toc.setTexture(image);
+		toc.setPosition(50, 5);
+		toc.setTextureRect(IntRect(250, 0, 25, 36));
+// это хз что за параметр
+		ms = 0;
+	}
+// РАБОТА САМОГО СЕКУНДОМЕРА, КОГДА МЫ ИЩЕМ ВЫХОД ИЗ ЛАБИРИНТА - ОН РАБОТАЕТ
+	void update() {
+  // ВО ВРЕМЯ ПАУЗЫ СЕКУНДОМЕР НЕ РАБОТЕТ
+		if (!pob && pe == 1)
+			ms++;
+// это хз 
+		if (ms >= 1000) {
+			s[1]++;
+			ms = 0;
+		}
+// это хз 
+		if (s[1] == 10) {
+			s[0]++;
+			s[1] = 0;
+		}
+// это хз 
+		if (s[0] == 6) {
+			m[1]++;
+			s[0] = 0;
+		}
+// это хз 
+		if (m[1] == 10) {
+			m[0]++;
+			m[1] = 0;
+		}
+// это хз 
+// это хз  //// я так понимаю что числа 1, 1000, 10, 6 - это коды клавиш типа стрелки вниз вверх вправо влево
+		for (int i = 0; i < 2; i++) {
+			sec[i].setTextureRect(IntRect(25 * s[i], 0, 25, 36));
+			min[i].setTextureRect(IntRect(25 * m[i], 0, 25, 36));
+		}
+	}
+};
+// СОЗДАИЕ ОКНА
+int main() {
+	RenderWindow window(VideoMode(7 * ts, 7 * ts), "Maze!");
+// это хз идет добавление графики, что такое спрайт и плат 
+// это хз идет добавление графики, что такое спрайт и плат // спрайт - что-то вроде гифки или картинки, плат - хз
+	Texture t;
+  // ВСТАЛЯЕМ САМУ КАРТИНКУ ДЛЯ ПЛАТ - ОБЫЧНЫЙ ЛАБИРИНТ
+	t.loadFromFile("C:/Users/zaboe/Desktop/Game/Paint/Bplat.png");
+	Sprite plat(t);
+// СОЗДАЮТСЯ КОЭФИЦИЕНТЫ ДЛЯ ИГРОКА, ПЕРВОНАЧАЛЬНЫЕ КООРДИНАТЫ
+	int x = 1, y = 19;
+  // НОВЫЕ КООРДИНАТЫ
+	int newx = 0, newy = 0;
+  // РИСУЕТСЯ НАШ ИГРОК В - ОТВЕЧАЕТ ЗА ИГРОКА
+	TileMap[y][x] = 'B';
+  // НОВЫЕ КОЭФФИЦИЕНТЫ КОТОРЫЕ ОТВЕЧАЮТ КОГДА БУДЕТ ДВИГАТЬСЯ КАМЕРА, А КОГДА НЕТ, ТО ЕСТЬ ТОЛЬКО ПРИ ЭТИХ ЗНАЧЕНИЯХ ДЛЯ ИКСА РАСЧИТЫВАЕМ ВМЕСТЕ СО СТЕНОЙ 0,1 А ДЛЯ У
+   ТОЖЕ СО СТЕНОЙ 0-5, С ПОМОЩЬЮ ТАКИХ ОГРАНИЧЕНИЙ МЫ БУДЕМ СОСТАВЛЯТЬ ОГРАНИЧЕНИЯ ЧТОБЫ КАМЕРА НЕ СМОГЛА ДВИГАТЬСЯ 
+	int nx = 1, ny = 5;
+	Texture w;
+	w.loadFromFile("C:/Users/zaboe/Desktop/Game/Paint/win.png");
+	Sprite win(w);
+	win.setPosition(20, 140);
+// ТЕКСТУРА СЕКУНДОМЕРА 
+Texture ti;
+	ti.loadFromFile("C:/Users/zaboe/Desktop/Game/Paint/time.png");
+	Stopwatch watch(ti);
+	Texture p;
+	p.loadFromFile("C:/Users/zaboe/Desktop/Game/Paint/pause.png");
+	Sprite pause(p);
+	pause.setPosition(80, 140);
+// уПРАВЛЯЕТСЯ САМ ИГРОК 
+	while (window.isOpen())
+	{
+		Event event;
+		while (window.pollEvent(event))
+		{
+			if (event.type == Event::Closed)
+				window.close();
+// еСЛИ МЫ ХОДИМ ПО ПУСТОТЕ- КАМЕРЫ ДВИГАЕТСЯ, ЕСЛИ ПОПЫТАЕМСЯ ПРОЙТИ ЧЕРЕЗ СТЕНУ - КАМЕРА НЕ ДВИГАЕТСЯ 
+			if (event.type == Event::KeyPressed) {
+				//УСЛОВИЕ ЧТОБЫ МЫ ДВИГАЛИСЬ
+        if (!pob) {
+        // CЕКУНДОМЕР РАБОТАЕТ
+					if (pe == 1) {
+						newx = x;
+						newy = y;
+						if (event.key.code == Keyboard::Right) {
+							newx += 1;
+              // ЕСЛИ НОВАЯ КООРДИНАТА ОТНОСИТСЯ К ПУСТОТЕ - КАМЕРА НЕ ДВИГАЕТСЯ
+							if (TileMap[newy][newx] == ' ')
+                nx++;
+                // ДОХОДИТ ДО ПРАВОЙ ГРАНИЦЫ ОКНА, КАМЕРА БУДЕТ ДВИГАТЬСЯ ОДИН РАЗ, А ИГРОК БУДЕТ НАХОДИТЬСЯ В ТОМ ЖЕ САМОМ МЕСТЕ
+							if (nx > 4) {
+              // ЕСЛИ ПО ПУСТОТЕ - БУДЕТ ДВИГАТЬСЯ КАМЕРА
+								OffsetX += ts;
+// это хз и вниз функционал передвижения? и что такое нх  // ну тут получается да, проверяется что нажимается и в зависимости от этого перемещается куда-то фигурка
+								nx = 4; // nx - я думаю что это граница по иксам, она равна 4, чтобы нельзя было за границу выйти
+							}
+						}
+						if (event.key.code == Keyboard::Left) {
+							newx -= 1;
+							if (TileMap[newy][newx] == ' ')
+								nx--;
+							if (nx < 2) {
+              // УПРАВЛЯЕТСЯ И ИГРОК И САМА КАМЕРА
+								OffsetX -= ts;
+								nx = 2;
+							}
+						}
+						if (event.key.code == Keyboard::Up) {
+							newy -= 1;
+							if (TileMap[newy][newx] == ' ')
+								ny--;
+
+							if (ny < 2) {
+								OffsetY -= ts;
+// это хз и вниз функционал передвижения? что такое ну // ny - граница по y наверное, чтобы нельзя было за границу выйти
+								ny = 2;
+							}
+						}
+						if (event.key.code == Keyboard::Down) {
+							newy += 1;
+// это хз, почему ну++ // я думаю что ny - положение фигуры в данный момент по оси игриков, если нажимается кнопка, то положение сдвигается
+							if (TileMap[newy][newx] == ' ')
+								ny++;
+
+							if (ny > 4) {
+								OffsetY += ts;
+								ny = 4;
+							}
+						}
+// это хз ? если врезается в стенку отвечает иф?
+// это хз ? если врезается в стенку отвечает иф? // при врезании в стенку музыка типа ошибки будет звучать
+						if (TileMap[newy][newx] == 'A')
+							sound.error.play();
+					}
+// это хз ? пе++ это пауза?
+// это хз ? пе++ это пауза? // а кстати похоже на паузу
+					if (event.key.code == Keyboard::Space) {
+						pe++;
+// это хз ? почему пе = 3 пе = 1
+// это хз ? почему пе = 3 пе = 1 // ну типа было на паузе нажал пробел и игра продолжилась
+						if (pe == 3) {
+							pe = 1;
+// это хз ? элсе иф отвечает за достижение конечной точки?
+// это хз ? элсе иф отвечает за достижение конечной точки? // наверное пауза
+							sound.time.play();
+						}
+						else if (pe == 2)
+							sound.time.stop();
+					}
+				}
+			}
+		}
+// уСЛОВИЯ ЧТОБЫ ОН ХОДИЛ
+		if (TileMap[newy][newx] == ' ') {
+			TileMap[y][x] = ' ';
+
+			TileMap[newy][newx] = 'B';
+// это хз координаты чего идут?
+// это хз координаты чего идут? // наверное возвращает на текущую позицию
+			x = newx;
+			y = newy;
+		}
+    // C ОТВЕЧАЕТ ГДЕ БУДЕТ САМ ВЫИГРЫШЬ - ВЫХОД ИЗ ЛАБИРИНТА 
+		if (TileMap[newy][newx] == 'C') {
+			// МЕСТО ОЧИЩАЛОСЬ ГДЕ НАХОДИЛСЯ ИГРОК
+      TileMap[y][x] = ' ';
+// это хз в чем тут различие с 230 строчкой
+// это хз в чем тут различие с 230 строчкой // может буквы собирать надо??))))
+		// ЗА ВМЕСТО ВЫХОДА ПОЯВЛЯЛСЯ ИГРОК
+    TileMap[newy][newx] = 'B';
+
+			x = newx;
+			y = newy;
+// это хз  что такое поб
+// это хз  что такое поб // я тож хз
+			pob = true;
+
+			sound.time.stop();
+			sound.win.play();
+		}
+// ОГРАНИЧЕНИЯ ДЛЯ КАМЕРЫ,ЧТОБЫ ОНА ДВИГАЛАСЬ ТОЛЬКО В ЛАБИРИНТЕ,А НЕ ПО ПУСТОТЕ
+		if (OffsetX < 0)
+			OffsetX = 0;
+		if (OffsetX > ts * 14)
+			OffsetX = ts * 14;
+		if (OffsetY < 0)
+			OffsetY = 0;
+		if (OffsetY > ts * 14)
+			OffsetY = ts * 14;
+// ПИШЕМ ЧТОБЫ ЕГО ФУНКЦИЯ ЗАРАБОТАЛА (СЕКУНДОМЕРА)
+		watch.update();
+    // ОЧИСТКА ОКА
+		window.clear(Color::White);
+    // РИСУЕМ САМ ЛАБИРИНТ - ВСТАВЛЯЕМ КУСОК КАРТИНКИ
+		for (int i = 0; i < H; i++)
+			for (int j = 0; j < W; j++) {
+				if (TileMap[i][j] == 'A')
+					plat.setTextureRect(IntRect(0, 0, ts, ts));
+				if (TileMap[i][j] == 'B')
+					plat.setTextureRect(IntRect(ts, 0, ts, ts));
+				if (TileMap[i][j] == 'C')
+					plat.setTextureRect(IntRect(ts * 2, 0, ts, ts));
+				if (TileMap[i][j] == ' ')
+					continue;
+          //ПОЗИЦИЯ НАШИХ ПЛИТОК МЫ ВЫЧИТАЕМ КООРДИНАТЫ НАШЕЙ КАМЕРЫ,ЧТОБЫ МЫ МОГЛИ УВИДЕТЬ НАШЕГО ИГРОКА
+				plat.setPosition(j * ts - OffsetX, i * ts - OffsetY);
+				window.draw(plat);
+			}
+      // ЕСЛИ ПОБ -ИСТИНА ТО ПИШЕМ ВИНДОВ ДРОУ
+		if (pob)
+			window.draw(win);
+      // РИСУЕМ СЕКУНДОМЕР
+		for (int i = 0; i < 2; i++) {
+			window.draw(watch.min[i]);
+			window.draw(watch.sec[i]);
+		}window.draw(watch.toc);
+		if (pe == 2)
+			window.draw(pause);
+		window.display();
+	}
+	return 0;
+}
