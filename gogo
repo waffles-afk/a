@@ -1,0 +1,288 @@
+#include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
+
+using namespace sf;
+//Это параметры лабиринта?
+const int H = 21;
+const int W = 21;
+
+const int ts = 50;
+//Cтенки лабиринта? двухмерный массив 
+String TileMap[H] = {
+"AAAAAAAAAAAAAAAAAAAAA",
+"A   A       A     A A",
+"A A AAA AAA AAA A A A",
+"A A     A     A A A C",
+"A AAA AAA A A A AAA A",
+"A   A   A A A   A   A",
+"AAA AAAAA A AAAAA A A",
+"A   A     A     A A A",
+"A AAA A AAAAAAA A AAA",
+"A A A A   A   A     A",
+"AAA A AAA AAA AAAAA A",
+"A   A   A   A   A   A",
+"AAA AAA AAA AAA A AAA",
+"A     A   A   A A A A",
+"A AAAAA A AAAAA AAA A",
+"A A     A A     A   A",
+"A A A AAAAA AAAAA AAA",
+"A   A   A A   A   A A",
+"AAA AAA A AAA A A A A",
+"A   A           A   A",
+"AAAAAAAAAAAAAAAAAAAAA",
+};
+// это хз 
+float OffsetX = 0;
+float OffsetY = ts * 14;
+// это хз 
+bool pob = false;
+int pe = 2;
+// звуки лабиринта при различных выполненных действий
+class setSound {
+public:
+	SoundBuffer s1, s2, s3;
+	Sound time, error, win;
+
+	setSound() {
+		s1.loadFromFile("C:/Users/zaboe/Desktop/Game/Sound/time.ogg");
+		s2.loadFromFile("C:/Users/zaboe/Desktop/Game/Sound/error.ogg");
+		s3.loadFromFile("C:/Users/zaboe/Desktop/Game/Sound/win.ogg");
+//!
+		time.setBuffer(s1);
+		error.setBuffer(s2);
+		win.setBuffer(s3);
+// это хз когда тру 
+		time.setLoop(true);
+	}
+};
+
+setSound sound;
+
+class Stopwatch {
+public:
+	Sprite min[2], sec[2], toc;
+	int m[2], s[2], ms;
+
+	Stopwatch(Texture& image) {
+		for (int i = 0; i < 2; i++) {
+			min[i].setTexture(image);
+			sec[i].setTexture(image);
+
+			min[i].setPosition(25 * i, 5);
+			sec[i].setPosition(75 + 25 * i, 5);
+// это хз положение часов?
+			min[i].setTextureRect(IntRect(0, 0, 25, 36));
+			sec[i].setTextureRect(IntRect(0, 0, 25, 36));
+// это хз что за параметры
+			m[i] = 0;
+			s[i] = 0;
+		}
+// это хз положение чего?
+		toc.setTexture(image);
+		toc.setPosition(50, 5);
+		toc.setTextureRect(IntRect(250, 0, 25, 36));
+// это хз что за параметр
+		ms = 0;
+	}
+// это хз ! что тут за функция 
+	void update() {
+		if (!pob && pe == 1)
+			ms++;
+// это хз 
+		if (ms >= 1000) {
+			s[1]++;
+			ms = 0;
+		}
+// это хз 
+		if (s[1] == 10) {
+			s[0]++;
+			s[1] = 0;
+		}
+// это хз 
+		if (s[0] == 6) {
+			m[1]++;
+			s[0] = 0;
+		}
+// это хз 
+		if (m[1] == 10) {
+			m[0]++;
+			m[1] = 0;
+		}
+// это хз 
+		for (int i = 0; i < 2; i++) {
+			sec[i].setTextureRect(IntRect(25 * s[i], 0, 25, 36));
+			min[i].setTextureRect(IntRect(25 * m[i], 0, 25, 36));
+		}
+	}
+};
+// это хз , наверное тут приближение поля идет 7*7 и последствии передвижения 
+int main() {
+	RenderWindow window(VideoMode(7 * ts, 7 * ts), "Maze!");
+// это хз идет добавление графики, что такое спрайт и плат 
+	Texture t;
+	t.loadFromFile("C:/Users/zaboe/Desktop/Game/Paint/Bplat.png");
+	Sprite plat(t);
+// это хз что за параметры и для чего 
+	int x = 1, y = 19;
+	int newx = 0, newy = 0;
+	TileMap[y][x] = 'B';
+	int nx = 1, ny = 5;
+
+	Texture w;
+	w.loadFromFile("C:/Users/zaboe/Desktop/Game/Paint/win.png");
+	Sprite win(w);
+	win.setPosition(20, 140);
+
+	Texture ti;
+	ti.loadFromFile("C:/Users/zaboe/Desktop/Game/Paint/time.png");
+	Stopwatch watch(ti);
+
+	Texture p;
+	p.loadFromFile("C:/Users/zaboe/Desktop/Game/Paint/pause.png");
+	Sprite pause(p);
+	pause.setPosition(80, 140);
+// это хз и вниз функционал передвижения?
+	while (window.isOpen())
+	{
+		Event event;
+		while (window.pollEvent(event))
+		{
+			if (event.type == Event::Closed)
+				window.close();
+// это хз и вниз функционал передвижения?
+			if (event.type == Event::KeyPressed) {
+				if (!pob) {
+					if (pe == 1) {
+						newx = x;
+						newy = y;
+// это хз и вниз функционал передвижения?
+						if (event.key.code == Keyboard::Right) {
+							newx += 1;
+// это хз и вниз функционал передвижения?
+							if (TileMap[newy][newx] == ' ')
+								nx++;
+// это хз и вниз функционал передвижения?
+							if (nx > 4) {
+								OffsetX += ts;
+// это хз и вниз функционал передвижения? и что такое нх
+								nx = 4;
+							}
+						}
+						if (event.key.code == Keyboard::Left) {
+							newx -= 1;
+
+							if (TileMap[newy][newx] == ' ')
+								nx--;
+
+							if (nx < 2) {
+								OffsetX -= ts;
+
+								nx = 2;
+							}
+						}
+						if (event.key.code == Keyboard::Up) {
+							newy -= 1;
+
+							if (TileMap[newy][newx] == ' ')
+								ny--;
+
+							if (ny < 2) {
+								OffsetY -= ts;
+// это хз и вниз функционал передвижения? что такое ну
+								ny = 2;
+							}
+						}
+						if (event.key.code == Keyboard::Down) {
+							newy += 1;
+// это хз, почему ну++
+							if (TileMap[newy][newx] == ' ')
+								ny++;
+
+							if (ny > 4) {
+								OffsetY += ts;
+
+								ny = 4;
+							}
+						}
+// это хз ? если врезается в стенку отвечает иф?
+						if (TileMap[newy][newx] == 'A')
+							sound.error.play();
+					}
+// это хз ? пе++ это пауза?
+					if (event.key.code == Keyboard::Space) {
+						pe++;
+// это хз ? почему пе = 3 пе = 1
+						if (pe == 3) {
+							pe = 1;
+// это хз ? элсе иф отвечает за достижение конечной точки?
+							sound.time.play();
+						}
+						else if (pe == 2)
+							sound.time.stop();
+					}
+				}
+			}
+		}
+// это хз что за иф ( за что отвечает )
+		if (TileMap[newy][newx] == ' ') {
+			TileMap[y][x] = ' ';
+
+			TileMap[newy][newx] = 'B';
+// это хз координаты чего идут?
+			x = newx;
+			y = newy;
+		}
+		if (TileMap[newy][newx] == 'C') {
+			TileMap[y][x] = ' ';
+// это хз в чем тут различие с 230 строчкой
+			TileMap[newy][newx] = 'B';
+
+			x = newx;
+			y = newy;
+// это хз  что такое поб
+			pob = true;
+
+			sound.time.stop();
+			sound.win.play();
+		}
+// это хз что происходит вообще
+		if (OffsetX < 0)
+			OffsetX = 0;
+		if (OffsetX > ts * 14)
+			OffsetX = ts * 14;
+		if (OffsetY < 0)
+			OffsetY = 0;
+		if (OffsetY > ts * 14)
+			OffsetY = ts * 14;
+// это хз что происходит и вниз , 
+		watch.update();
+		window.clear(Color::White);
+		for (int i = 0; i < H; i++)
+			for (int j = 0; j < W; j++) {
+				if (TileMap[i][j] == 'A')
+					plat.setTextureRect(IntRect(0, 0, ts, ts));
+				if (TileMap[i][j] == 'B')
+					plat.setTextureRect(IntRect(ts, 0, ts, ts));
+				if (TileMap[i][j] == 'C')
+					plat.setTextureRect(IntRect(ts * 2, 0, ts, ts));
+				if (TileMap[i][j] == ' ')
+					continue;
+
+				plat.setPosition(j * ts - OffsetX, i * ts - OffsetY);
+				window.draw(plat);
+			}
+      // это хз и вниз функционал 
+		if (pob)
+			window.draw(win);
+		for (int i = 0; i < 2; i++) {
+			window.draw(watch.min[i]);
+			window.draw(watch.sec[i]);
+		}
+		window.draw(watch.toc);
+		if (pe == 2)
+			window.draw(pause);
+		window.display();
+	}
+
+	return 0;
+}
